@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>وردیوم فارسی</title>
+<style>
+*{box-sizing:border-box;user-select:none;-webkit-user-select:none;font-family:Tahoma,sans-serif}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#121213;display:flex;justify-content:center;align-items:center}
+#app{position:relative;width:100%;max-width:460px;height:100%;background:#121213;color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:10px 8px}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-bottom:1px solid #3a3a3c}
+.title{font-size:20px;font-weight:900;color:#fff;letter-spacing:1px}
+.h-btns{display:flex;gap:8px;align-items:center}
+.h-btn{background:#272729;border:1px solid #3a3a3c;color:#fff;padding:6px 10px;border-radius:10px;font-size:13px;font-weight:bold;display:flex;align-items:center;gap:4px}
+#grid{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;margin:auto 0}
+.row{display:flex;gap:6px;direction:rtl}
+.tile{width:52px;height:52px;border:2px solid #3a3a3c;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;background:#121213;transition:transform .15s,background .3s,border-color .3s}
+.tile.filled{border-color:#818384;transform:scale(1.04)}
+.tile.correct{background:#538d4e;border-color:#538d4e}
+.tile.present{background:#b59f3b;border-color:#b59f3b}
+.tile.absent{background:#3a3a3c;border-color:#3a3a3c}
+.kb{display:flex;flex-direction:column;gap:6px;padding-bottom:6px;direction:rtl}
+.k-row{display:flex;justify-content:center;gap:4px}
+.key{height:44px;min-width:29px;flex:1;max-width:38px;background:#818384;border:none;border-radius:6px;color:#fff;font-size:16px;font-weight:bold;display:flex;align-items:center;justify-content:center;padding:0}
+.key:active{opacity:.75}
+.key.wide{max-width:58px;font-size:13px;background:#565758}
+.key.correct{background:#538d4e}
+.key.present{background:#b59f3b}
+.key.absent{background:#3a3a3c;color:#888}
+#toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);background:#fff;color:#121213;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:bold;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.ov{position:absolute;inset:0;background:rgba(18,18,19,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:80;text-align:center}
+.hd{display:none!important}
+.card{background:#1e1e20;border:1px solid #3a3a3c;border-radius:16px;padding:18px;width:100%;max-width:340px;margin-bottom:14px}
+.btn{width:100%;max-width:300px;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:bold;margin-bottom:10px}
+.b-green{background:#538d4e;color:#fff}
+.b-gold{background:#b59f3b;color:#fff}
+.b-gray{background:#3a3a3c;color:#fff}
+#lb{width:100%;max-width:340px;max-height:55vh;overflow-y:auto;text-align:right}
+.r-item{display:flex;justify-content:space-between;align-items:center;background:#1e1e20;padding:10px 12px;border-radius:10px;margin-bottom:6px;border:1px solid #2c2c2e}
+.r-item.me{border-color:#538d4e;background:rgba(83,141,78,.2)}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="toast"></div>
+<div class="hdr">
+<div class="h-btns">
+<button class="h-btn" onclick="openRank()">🏆</button>
+<button class="h-btn" onclick="useHint()">💡 <span>30</span></button>
+</div>
+<div class="title">وردیوم</div>
+<div class="h-btns">
+<div class="h-btn">🪙 <span id="coins">100</span></div>
+<div class="h-btn">🔥 <span id="wins">0</span></div>
+</div>
+</div>
+<div id="grid"></div>
+<div class="kb" id="kb"></div>
+
+<div id="end-ov" class="ov hd">
+<div class="card">
+<h2 id="end-title" style="margin:0 0 8px;color:#538d4e">آفرین! درست حدس زدی</h2>
+<p style="margin:0 0 12px;color:#ccc;font-size:14px">کلمه مخفی: <strong id="secret-show" style="color:#ffd166;font-size:18px"></strong></p>
+<div id="emoji-box" style="font-size:18px;line-height:1.4;margin-bottom:10px;direction:ltr"></div>
+</div>
+<button class="btn b-green" onclick="shareResult()">📋 کپی نتیجه رنگی برای گروه</button>
+<button class="btn b-gold" onclick="newGame()">بازی بعدی 🔄</button>
+<button class="btn b-gray" onclick="openRank()">🏆 جدول قهرمانان</button>
+</div>
+
+<div id="rank-ov" class="ov hd">
+<h2 style="color:#ffd166;margin-bottom:14px">🏆 برترین‌های وردیوم</h2>
+<div id="lb">در حال دریافت...</div>
+<button class="btn b-gray" style="margin-top:14px" onclick="document.getElementById('rank-ov').classList.add('hd')">بازگشت</button>
+</div>
+</div>
+
+<script>
+const DB="https://kido-db.mohammadahmadi0007.workers.dev/wordium";
+const WORDS=["باران","درخت","کتابم","پرواز","خورش","ستاره","لبخند","آسمان","دوستي","سلامت","بهشت","ساحل","درياچ","پنجره","ديوار","فانوس","گلدان","چراغو","شيرين","اميدو","تلاشگ","زندگي","مهربا","سپيده","نسيمو","خاطره","مهمان","فرهنگ","دانشج","ورزشك","آزادي","پيروز","شاديو","آرامش","طبيعت","بهارو","تابست","پاييز","زمستا","بارون","طوفان","صداقت","عدالت","محبتو","همدلي","ايمان","باريك","شجاعت","تاريخ","جنگلو","كوهست","بيابا","رودخا","چشمهو","آبشار","پرنده","كبوتر","پروان","گلبرگ","شکوفه"];
+const CLEAN_WORDS=["باران","درخت","پرواز","ستاره","لبخند","آسمان","سلامت","ساحل","پنجره","فانوس","گلدان","شیرین","زندگی","سپیده","خاطره","مهمان","فرهنگ","ورزشک","آزادی","پیروز","آرامش","طبیعت","پاییز","بارون","طوفان","صداقت","عدالت","همدلی","ایمان","شجاعت","تاریخ","رودخا","آبشار","پرنده","کبوتر","پروان","گلبرگ","شکوفه","میدان","خاموش","روشنک","بیدار","همراه","پاییز","زمستان".slice(0,5),"تابست","بهارن","گلزار","چمنزا","کوهسا","دریاچه".slice(0,5),"سرزمی","هموطن","دانایی","توانای","بینای","شنوای","گویای","پویای","ماندگا"];
+
+let usr={id:localStorage.getItem("wid")||("g_"+Math.floor(1e5+Math.random()*9e5)),name:"بازیکن مهمان"};
+localStorage.setItem("wid",usr.id);
+try{
+const raw=(location.hash||"")+"&"+(location.search||"");
+const m=raw.match(/(?:tgWebAppData|baleWebAppData)=([^&]+)/);
+if(m&&m[1]){const u=JSON.parse(new URLSearchParams(decodeURIComponent(m[1])).get("user"));if(u&&u.id){usr.id="bale_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean).join(" ")||u.username||"کاربر بله"}}
+if(window.Bale&&Bale.WebApp){Bale.WebApp.ready();Bale.WebApp.expand();const u=Bale.WebApp.initDataUnsafe&&Bale.WebApp.initDataUnsafe.user;if(u&&u.id){usr.id="bale_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean).join(" ")||u.username||"کاربر بله"}}
+}catch(e){}
+
+let coins=parseInt(localStorage.getItem("w_coins")||"100",10);
+let wins=parseInt(localStorage.getItem("w_wins")||"0",10);
+let secret="",row=0,col=0,board=[],gameOver=false,historyEmojis=[];
+
+const KB_ROWS=[
+["ض","ص","ث","ق","ف","غ","ع","ه","خ","ح","ج"],
+["ش","س","ی","ب","ل","ا","ت","ن","م","ک","گ"],
+["ثبت","ظ","ط","ز","ر","ذ","د","پ","و","چ","⌫"]
+];
+
+function toast(msg){const t=document.getElementById("toast");t.innerText=msg;t.style.opacity="1";setTimeout(()=>t.style.opacity="0",2000)}
+function updateHud(){document.getElementById("coins").innerText=coins;document.getElementById("wins").innerText=wins;localStorage.setItem("w_coins",coins);localStorage.setItem("w_wins",wins)}
+
+function buildUI(){
+const g=document.getElementById("grid");g.innerHTML="";
+for(let r=0;r<6;r++){
+const rw=document.createElement("div");rw.className="row";
+for(let c=0;c<5;c++){const tl=document.createElement("div");tl.className="tile";tl.id="t_"+r+"_"+c;rw.appendChild(tl)}
+g.appendChild(rw);
+}
+const kb=document.getElementById("kb");kb.innerHTML="";
+KB_ROWS.forEach(kr=>{
+const rw=document.createElement("div");rw.className="k-row";
+kr.forEach(k=>{
+const b=document.createElement("button");b.className="key"+(k==="ثبت"||k==="⌫"?" wide":"");
+b.innerText=k;b.id="k_"+k;
+b.onclick=()=>onKey(k);
+rw.appendChild(b);
+});
+kb.appendChild(rw);
+});
+}
+
+function newGame(){
+document.getElementById("end-ov").classList.add("hd");
+const valid=CLEAN_WORDS.filter(w=>w.length===5);
+secret=valid[Math.floor(Math.random()*valid.length)];
+row=0;col=0;gameOver=false;historyEmojis=[];
+board=Array.from({length:6},()=>Array(5).fill(""));
+for(let r=0;r<6;r++)for(let c=0;c<5;c++){const t=document.getElementById("t_"+r+"_"+c);t.innerText="";t.className="tile"}
+document.querySelectorAll(".key").forEach(k=>{k.classList.remove("correct","present","absent")});
+updateHud();
+}
+
+function onKey(k){
+if(gameOver)return;
+if(k==="⌫"){
+if(col>0){col--;board[row][col]="";const t=document.getElementById("t_"+row+"_"+col);t.innerText="";t.classList.remove("filled")}
+return;
+}
+if(k==="ثبت"){
+if(col<5){toast("کلمه باید ۵ حرفی باشد!");return}
+submitGuess();
+return;
+}
+if(col<5){
+board[row][col]=k;
+const t=document.getElementById("t_"+row+"_"+col);
+t.innerText=k;t.classList.add("filled");
+col++;
+}
+}
+
+function submitGuess(){
+const guess=board[row].join("");
+const res=Array(5).fill("absent");
+const secArr=secret.split("");
+const used=Array(5).fill(false);
+
+for(let i=0;i<5;i++){
+if(guess[i]===secArr[i]){res[i]="correct";used[i]=true}
+}
+for(let i=0;i<5;i++){
+if(res[i]==="correct")continue;
+const idx=secArr.findIndex((ch,j)=>!used[j]&&ch===guess[i]);
+if(idx!==-1){res[i]="present";used[idx]=true}
+}
+
+let lineEmoji="";
+for(let i=0;i<5;i++){
+const t=document.getElementById("t_"+row+"_"+i);
+t.classList.add(res[i]);
+const kb=document.getElementById("k_"+guess[i]);
+if(kb){
+if(res[i]==="correct"){kb.classList.remove("present","absent");kb.classList.add("correct")}
+else if(res[i]==="present"&&!kb.classList.contains("correct")){kb.classList.remove("absent");kb.classList.add("present")}
+else if(!kb.classList.contains("correct")&&!kb.classList.contains("present")){kb.classList.add("absent")}
+}
+lineEmoji+=res[i]==="correct"?"🟩":res[i]==="present"?"🟨":"⬛";
+}
+historyEmojis.push(lineEmoji);
+
+if(guess===secret){
+gameOver=true;wins++;coins+=20;updateHud();saveScore();
+showEnd(true);
+return;
+}
+row++;col=0;
+if(row===6){
+gameOver=true;
+showEnd(false);
+}
+}
+
+function useHint(){
+if(gameOver)return;
+if(coins<30){toast("سکه کافی نداری! (۳۰ سکه)");return}
+for(let i=0;i<5;i++){
+if(board[row][i]!==secret[i]){
+coins-=30;updateHud();
+board[row][i]=secret[i];
+const t=document.getElementById("t_"+row+"_"+i);
+t.innerText=secret[i];t.classList.add("filled","correct");
+if(col===i)col++;
+toast("حرف "+(i+1)+" راهنمایی شد!");
+return;
+}
+}
+}
+
+function showEnd(isWin){
+document.getElementById("end-title").innerText=isWin?"آفرین! درست حدس زدی 🎉":"فرصت‌ها تمام شد! 😅";
+document.getElementById("end-title").style.color=isWin?"#538d4e":"#e74c3c";
+document.getElementById("secret-show").innerText=secret;
+document.getElementById("emoji-box").innerHTML=historyEmojis.join("<br>");
+setTimeout(()=>document.getElementById("end-ov").classList.remove("hd"),450);
+}
+
+function shareResult(){
+const txt="🧩 وردیوم فارسی ("+(gameOver&&board[row]&&board[row].join("")===secret?(row+1)+"/6":"X/6")+")\n\n"+historyEmojis.join("\n")+"\n\nتو هم حدس بزن 👇\nhttps://ble.ir";
+if(navigator.clipboard)navigator.clipboard.writeText(txt);
+toast("نتیجه کپی شد! در گروه بفرست ✅");
+}
+
+async function saveScore(){
+try{await fetch(DB+"/"+usr.id+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:usr.name,wins:wins,updatedAt:Date.now()})})}catch(e){}
+}
+
+async function openRank(){
+const lb=document.getElementById("lb");
+lb.innerHTML="<div style='text-align:center;padding:20px'>در حال دریافت...</div>";
+document.getElementById("rank-ov").classList.remove("hd");
+try{
+const r=await fetch(DB+".json"),d=await r.json();
+if(!d){lb.innerHTML="<div style='text-align:center;padding:20px'>هنوز رکوردی ثبت نشده!</div>";return}
+const list=Object.keys(d).map(k=>({id:k,...d[k]})).sort((a,b)=>b.wins-a.wins);
+lb.innerHTML=list.slice(0,20).map((x,i)=>"<div class='r-item "+(x.id===usr.id?"me":"")+"'><span>"+(i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1))+" "+(x.name||"بازیکن")+"</span><strong style='color:#ffd166'>"+x.wins+" برد</strong></div>").join("");
+}catch(e){lb.innerHTML="<div style='text-align:center;padding:20px;color:#ff6b6b'>خطا در ارتباط با سرور</div>"}
+}
+
+buildUI();
+newGame();
+</script>
+</body>
+</html>
